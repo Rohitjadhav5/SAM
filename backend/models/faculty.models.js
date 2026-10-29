@@ -4,17 +4,17 @@ const facultyModel = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-        requred: true,
+        required: true,
         unique: true
     },
     department: {
         type: String,
-        requred: true,
+        required: true,
         trim: true
     },
     email: {
         type: String,
-        requred: true,
+        required: true,
         unique: true,
         lowercase: true,
         trim: true,

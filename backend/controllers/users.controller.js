@@ -1,13 +1,22 @@
 const User = require("../models/user.models");
 const bcrypt = require("bcryptjs")
+const jwt = require("jsonwebtoken")
 
 const register = async (req, res) => {
     try {
         const { name, email, mobile, password, role } = req.body;
-        if (!name || !email || !mobile || !password || !role) {
+        const normalizedRole = typeof role === "string" ? role.trim().toLowerCase() : "";
+        if (!name || !email || !mobile || !password || !normalizedRole) {
             return res.status(400).json({
                 message: "All fields are required"
             })
+        }
+
+        const validRoles = User.schema.path("role").enumValues;
+        if (!validRoles.includes(normalizedRole)) {
+            return res.status(400).json({
+                message: `Role must be one of: ${validRoles.join(", ")}`
+            });
         }
 
         const user = await User.findOne({ email });
@@ -28,7 +37,7 @@ const register = async (req, res) => {
             email,
             mobile,
             password: hashPassword,
-            role
+            role: normalizedRole
         });
 
         return res.status(201).json({
@@ -38,8 +47,10 @@ const register = async (req, res) => {
 
 
     } catch (error) {
-        console.log(error);
-        
+        console.error("User registration failed:", error);
+        return res.status(500).json({
+            message: "Unable to register user"
+        });
     }
 }
 
@@ -56,8 +67,10 @@ const login = async (req,res)=>{
             })
         }
 
-        const user = await User.findOne({email});
-        const isPasswordMatch = await bcrypt.compare(password,user.password);
+        const user = await User.findOne({email: email.trim().toLowerCase()});
+        const isPasswordMatch = user
+            ? await bcrypt.compare(password,user.password)
+            : false;
 
         if(!user || !isPasswordMatch)
         {
@@ -69,6 +82,29 @@ const login = async (req,res)=>{
 
         ////  Tokenization ////
 
+        if (!process.env.JWT_KEY) {
+            console.error("Login failed: JWT_KEY is not configured");
+            return res.status(500).json({
+                message: "Unable to log in",
+                success: false
+            });
+        }
+
+        const tokenData = {
+            userId: user._id
+        };
+        const token = jwt.sign(tokenData,process.env.JWT_KEY,{expiresIn:'1d'});
+
+        return res.status(200).cookie("token", token,{maxAge: 1*24*60*60*1000, httpOnly:true, sameSite:'strict'}).json({
+            message: "Logged in successfully",
+            success: true,
+            token,
+            _id:user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+        });
+
 
     } catch (error) {
         console.log(error);
@@ -76,6 +112,14 @@ const login = async (req,res)=>{
     }
 }
 
+const logout =(req,res) =>{
+    try {
+        return res.status(200).cookie("token", "",{maxAge: 0}).json({
+            message: "Logged out successfully"
+        })
+    } catch (error) {
+        console.log(error);
+    }
+}
 
-module.exports = {register, login};
-
+module.exports = {register, login,logout};
