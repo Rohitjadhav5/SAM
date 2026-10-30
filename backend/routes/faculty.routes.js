@@ -1,12 +1,21 @@
 const express = require("express");
-const route = express.Router();
+const router = express.Router();
 const Auth = require("../middleware/auth.middleware");
 const Role = require("../middleware/role.middleware");
-const { getMyProfile, getMyStudents, markManualAttendance } = require("../controllers/faculty.controller")
 
-route.get('/myprofile',Auth,Role("faculty"),getMyProfile);
-route.get('/student',Auth,Role("faculty"),getMyStudents);
-route.post('/manualattendance',Auth,Role("faculty"),markManualAttendance);
+const {
+  getMyProfile,
+  getMyStudents,
+  markManualAttendance,
+} = require("../controllers/faculty.controller");
 
+// Faculty Profile
+router.get("/myprofile", Auth, Role("faculty"), getMyProfile);
 
-module.exports = route;
+// Department Students
+router.get("/student", Auth, Role("faculty"), getMyStudents);
+
+// Manual Attendance
+router.post("/manualattendance", Auth, Role("faculty"), markManualAttendance);
+
+module.exports = router;
